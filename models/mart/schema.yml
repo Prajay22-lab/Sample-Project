@@ -1,0 +1,215 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: Customer dimension. One row per customer, with an account count rolled up from int_customer_accounts.
+    columns:
+      - name: customer_sk
+        description: Surrogate key for the customer, generated as md5(customer_id).
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Natural key of the customer, from stg_customers.
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: Customer's full name (first + last).
+      - name: email
+        description: Customer email address.
+        tests:
+          - not_null
+      - name: country
+        description: Customer country, cleaned via the clean_text macro (trimmed and uppercased).
+      - name: customer_status
+        description: Lifecycle status of the customer.
+        tests:
+          - accepted_values:
+              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+      - name: account_count
+        description: Number of distinct accounts owned by this customer.
+        tests:
+          - not_null
+
+  - name: dim_account
+    description: Account dimension. One row per account, sourced from int_customer_accounts to avoid duplication from opportunity joins.
+    columns:
+      - name: account_sk
+        description: Surrogate key for the account, generated as md5(account_id).
+        tests:
+          - unique
+          - not_null
+      - name: account_id
+        description: Natural key of the account, from stg_accounts.
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Foreign key referencing the owning customer.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+      - name: account_name
+        description: Name of the account.
+      - name: account_type
+        description: Type/category of the account.
+        tests:
+          - not_null
+      - name: industry
+        description: Industry the account operates in.
+      - name: annual_revenue
+        description: Reported annual revenue for the account.
+
+  - name: fct_opportunity
+    description: Opportunity fact table. One row per opportunity, sourced from int_customer_opportunities.
+    columns:
+      - name: opportunity_sk
+        description: Surrogate key for the opportunity, generated as md5(opportunity_id).
+        tests:
+          - unique
+          - not_null
+      - name: opportunity_id
+        description: Natural key of the opportunity, from stg_opportunities.
+        tests:
+          - unique
+          - not_null
+      - name: account_id
+        description: Foreign key referencing the account this opportunity belongs to.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_account')
+              field: account_id
+      - name: customer_id
+        description: Foreign key referencing the customer that owns the related account.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+      - name: opportunity_name
+        description: Name of the opportunity.
+      - name: stage
+        description: Sales stage of the opportunity.
+        tests:
+          - accepted_values:
+              values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
+      - name: opportunity_status
+        description: Simplified status derived from stage (WON, LOST, or OPEN).
+        tests:
+          - accepted_values:
+              values: ['WON', 'LOST', 'OPEN']
+      - name: opportunity_amount
+        description: Monetary value of the opportunity.
+        tests:
+          - not_null
+          - non_negative
+      - name: opportunity_amount_category
+        description: Size category of the opportunity amount (SMALL, MEDIUM, LARGE), derived via the opportunity_amount_category macro.
+        tests:
+          - accepted_values:
+              values: ['SMALL', 'MEDIUM', 'LARGE']
+      - name: close_date
+        description: Date the opportunity closed or is expected to close.
+      - name: is_won
+        description: Boolean flag, true when opportunity_status is WON.
+      - name: is_lost
+        description: Boolean flag, true when opportunity_status is LOST.
+      - name: is_open
+        description: Boolean flag, true when opportunity_status is OPEN.
+
+  - name: customer_360
+    description: Consolidated customer-level reporting mart. One row per customer, with account and opportunity metrics pre-aggregated before joining to dim_customer.
+    columns:
+      - name: customer_sk
+        description: Surrogate key for the customer, generated as md5(customer_id).
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Natural key of the customer.
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+      - name: customer_name
+        description: Customer's full name.
+      - name: email
+        description: Customer email address.
+      - name: country
+        description: Customer country.
+      - name: customer_status
+        description: Lifecycle status of the customer.
+        tests:
+          - accepted_values:
+              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+      - name: total_accounts
+        description: Total number of accounts owned by the customer.
+        tests:
+          - not_null
+      - name: total_opportunities
+        description: Total number of opportunities across all of the customer's accounts.
+        tests:
+          - not_null
+      - name: total_opportunity_amount
+        description: Sum of opportunity amounts across all of the customer's opportunities.
+        tests:
+          - not_null
+          - non_negative
+      - name: won_opportunity_count
+        description: Count of opportunities with status WON.
+        tests:
+          - not_null
+      - name: lost_opportunity_count
+        description: Count of opportunities with status LOST.
+        tests:
+          - not_null
+      - name: open_opportunity_count
+        description: Count of opportunities with status OPEN.
+        tests:
+          - not_null
+      - name: total_won_amount
+        description: Sum of opportunity amounts with status WON.
+        tests:
+          - not_null
+          - non_negative
+      - name: total_open_amount
+        description: Sum of opportunity amounts with status OPEN.
+        tests:
+          - not_null
+          - non_negative
+
+  - name: customer_pipeline_summary
+    description: >
+      Migrated from legacy Spark logic. One row per ACTIVE customer, with
+      opportunity volume and won/open pipeline amounts.
+    columns:
+      - name: customer_id
+        description: Natural key of the active customer.
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_id
+      - name: customer_name
+        description: Customer's full name (first + last).
+      - name: opportunity_count
+        description: Count of opportunities belonging to the customer.
+        tests:
+          - not_null
+      - name: won_amount
+        description: Sum of opportunity amounts with stage CLOSED WON.
+        tests:
+          - not_null
+          - non_negative
+      - name: open_amount
+        description: Sum of opportunity amounts with any non-closed stage.
+        tests:
+          - not_null
+          - non_negative

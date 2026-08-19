@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: Staging model for Salesforce customer records. Cleans text fields (trim/case normalization) from the raw CUSTOMERS source table.
+    columns:
+      - name: customer_id
+        description: Unique identifier for a customer. Primary key of this model.
+        tests:
+          - not_null
+          - unique
+      - name: email
+        description: Customer email address, lowercased and trimmed.
+        tests:
+          - not_null
+      - name: customer_status
+        description: Lifecycle status of the customer, uppercased.
+        tests:
+          - accepted_values:
+              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+
+  - name: stg_accounts
+    description: Staging model for Salesforce account records. Cleans text fields (trim/case normalization) from the raw ACCOUNTS source table.
+    columns:
+      - name: account_id
+        description: Unique identifier for an account. Primary key of this model.
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: Foreign key referencing the customer that owns this account.
+        tests:
+          - not_null
+      - name: account_type
+        description: Type/category of the account, uppercased and trimmed.
+        tests:
+          - not_null
+
+  - name: stg_opportunities
+    description: Staging model for Salesforce opportunity records. Cleans text fields (trim/case normalization) from the raw OPPORTUNITIES source table.
+    columns:
+      - name: opportunity_id
+        description: Unique identifier for an opportunity. Primary key of this model.
+        tests:
+          - not_null
+          - unique
+      - name: account_id
+        description: Foreign key referencing the account this opportunity belongs to.
+        tests:
+          - not_null
+      - name: amount
+        description: Monetary value of the opportunity.
+        tests:
+          - not_null
+          - non_negative
+      - name: stage
+        description: Sales stage of the opportunity, uppercased and trimmed.
+        tests:
+          - accepted_values:
+              values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']

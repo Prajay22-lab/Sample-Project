@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: salesforce
+    database: DBT_DEV
+    schema: RAW
+    tables:
+      - name: customers
+      - name: accounts
+      - name: opportunities
