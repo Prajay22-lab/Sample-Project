@@ -23,3 +23,4 @@ where opportunity_id is not null
 {% if is_incremental() %}
   and close_date > (select max(close_date) from {{ this }})
 {% endif %}
+
