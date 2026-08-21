@@ -1,0 +1,24 @@
+firstdbtproject:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: DBT_DEV
+      warehouse: DBT_WH
+      schema: DBT_PRACTICE
+      threads: 1
+
+    stage:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: STAGE_DB
+      warehouse: DBT_WH
+      schema: DBT_PRACTICE
+      threads: 4
