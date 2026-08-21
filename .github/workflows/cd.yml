@@ -1,0 +1,41 @@
+name: CD - Production Job Creation
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  request-approval:
+    runs-on: ubuntu-latest
+    environment: production-approval
+    steps:
+      - name: Wait for approval
+        run: echo "Approved — proceeding to create prod job"
+
+  create-prod-job:
+    needs: request-approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt
+        run: pip install dbt-snowflake
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Build prod job (dry run / compile only)
+        run: dbt compile --target prod
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+
+      - name: Confirm prod job ready
+        run: echo "Prod job prepared for commit ${{ github.sha }} — trigger the actual run manually when ready"

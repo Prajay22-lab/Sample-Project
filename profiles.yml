@@ -22,3 +22,14 @@ firstdbtproject:
       warehouse: DBT_WH
       schema: DBT_PRACTICE
       threads: 4
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: ACCOUNTADMIN
+      database: PROD_DB
+      warehouse: DBT_WH
+      schema: DBT_PRACTICE
+      threads: 4
