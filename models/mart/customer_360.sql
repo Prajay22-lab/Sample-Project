@@ -4,7 +4,7 @@
 -- accounts and opportunities are each aggregated to customer_id
 -- BEFORE joining to dim_customer, so the join cannot fan out.
 --Test
-
+-- deployment 
 with account_agg as (
 
     select
