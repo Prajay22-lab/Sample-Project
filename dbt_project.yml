@@ -30,22 +30,19 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   firstdbtproject:
-    # Config indicated by + and applies to all files under models/example/
+    # Config indicated by + and applies to all files under models/<layer>/
     staging:
       +materialized: view
       +schema: STAGING
       +tags: ["staging"]
     intermediate:
-      +materialized: view
+      +materialized: ephemeral
       +schema: INTERMEDIATE
       +tags: ["intermediate"]
-    mart:
+    marts:
       +materialized: table
       +schema: MART
       +tags: ["mart"]
-    practice:
-      +materialized: view
-      +schema: PRACTICE
 
 snapshots:
   firstdbtproject:

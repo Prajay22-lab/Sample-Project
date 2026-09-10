@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: int_customers__joined_accounts
+    description: Combines each customer with their account(s). One row per customer/account pair.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [customer_id, account_id]
+    columns:
+      - name: customer_id
+        description: Natural key of the customer, from stg_customers. Never null (left join is customer -> account).
+        tests:
+          - not_null
+      - name: account_id
+        description: Natural key of the account, from stg_accounts. Null when the customer has no accounts.
+
+  - name: int_accounts__joined_opportunities
+    description: Combines each account with its opportunity(ies). One row per account/opportunity pair.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [account_id, opportunity_id]
+    columns:
+      - name: account_id
+        description: Natural key of the account, from stg_accounts. Never null (left join is account -> opportunity).
+        tests:
+          - not_null
+      - name: opportunity_id
+        description: Natural key of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+
+  - name: int_customers__active_with_opportunities
+    description: >
+      Active customers left-joined to their opportunities via accounts.
+      One row per active customer/opportunity pair.
+    columns:
+      - name: customer_id
+        description: Natural key of the customer, from stg_customers. Never null (left join is customer -> opportunity).
+        tests:
+          - not_null
+      - name: opportunity_id
+        description: Natural key of the opportunity, from stg_opportunities. Null when the customer's accounts have no opportunities.
+
+  - name: int_customers__joined_opportunities
+    description: >
+      Customer-level opportunity dataset at opportunity grain, with
+      account-level and customer-level opportunity totals via window functions.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [account_id, opportunity_id]
+    columns:
+      - name: customer_id
+        description: Natural key of the customer, from stg_customers. Never null (left join is customer -> opportunity).
+        tests:
+          - not_null
+      - name: account_id
+        description: Natural key of the account, from stg_accounts. Null when the customer has no accounts.
+      - name: opportunity_id
+        description: Natural key of the opportunity, from stg_opportunities. Null when the account has no opportunities.

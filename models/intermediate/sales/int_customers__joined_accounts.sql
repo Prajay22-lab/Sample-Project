@@ -1,5 +1,3 @@
-{{ config(materialized='view') }}
-
 -- combines each customer with their account(s), one row per customer/account pair
 
 select

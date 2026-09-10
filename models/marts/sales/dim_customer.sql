@@ -1,7 +1,7 @@
 {{ config(materialized='table') }}
 
 -- customer dimension: one row per customer, with account count rolled up
--- from int_customer_accounts (customer/account grain)
+-- from int_customers__joined_accounts (customer/account grain)
 
 with customer_accounts as (
 
@@ -12,7 +12,7 @@ with customer_accounts as (
         country,
         customer_status,
         account_id
-    from {{ ref('int_customer_accounts') }}
+    from {{ ref('int_customers__joined_accounts') }}
 
 ),
 

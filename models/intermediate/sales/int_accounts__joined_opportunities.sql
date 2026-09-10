@@ -1,5 +1,3 @@
-{{ config(materialized='view') }}
-
 -- combines each account with its opportunity(ies), one row per account/opportunity pair
 
 select
@@ -14,6 +12,7 @@ select
     o.stage,
     o.amount,
     o.close_date,
+    o.updated_date,
     case
         when o.stage = 'CLOSED WON' then 'WON'
         when o.stage = 'CLOSED LOST' then 'LOST'

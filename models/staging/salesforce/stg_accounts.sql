@@ -1,5 +1,3 @@
-
--- practice deploy test
 select
     account_id,
     customer_id,

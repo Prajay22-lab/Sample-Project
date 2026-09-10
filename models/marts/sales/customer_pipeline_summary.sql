@@ -12,5 +12,5 @@ select
     count(opportunity_id) as opportunity_count,
     sum(case when stage = 'CLOSED WON' then amount else 0 end) as won_amount,
     sum(case when stage not in ('CLOSED WON', 'CLOSED LOST') then amount else 0 end) as open_amount
-from {{ ref('int_active_customer_opportunities') }}
+from {{ ref('int_customers__active_with_opportunities') }}
 group by customer_id, customer_name

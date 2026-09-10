@@ -1,8 +1,8 @@
 {{ config(materialized='table') }}
 
--- account dimension: one row per account, sourced from int_customer_accounts
+-- account dimension: one row per account, sourced from int_customers__joined_accounts
 -- (customer/account grain, already one row per account) to avoid fan-out
--- from the account/opportunity join in int_account_opportunities
+-- from the account/opportunity join in int_accounts__joined_opportunities
 
 with account_base as (
 
@@ -13,7 +13,7 @@ with account_base as (
         account_type,
         industry,
         annual_revenue
-    from {{ ref('int_customer_accounts') }}
+    from {{ ref('int_customers__joined_accounts') }}
     where account_id is not null
 
 )
