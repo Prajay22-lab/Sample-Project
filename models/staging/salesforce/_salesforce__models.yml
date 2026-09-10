@@ -31,6 +31,9 @@ models:
         description: Foreign key referencing the customer that owns this account.
         tests:
           - not_null
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
       - name: account_type
         description: Type/category of the account, uppercased and trimmed.
         tests:
@@ -48,6 +51,9 @@ models:
         description: Foreign key referencing the account this opportunity belongs to.
         tests:
           - not_null
+          - relationships:
+              to: ref('stg_accounts')
+              field: account_id
       - name: amount
         description: Monetary value of the opportunity.
         tests:

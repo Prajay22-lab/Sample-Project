@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_customer
-    description: Customer dimension. One row per customer, with an account count rolled up from int_customer_accounts.
+    description: Customer dimension. One row per customer, with an account count rolled up from int_customers__joined_accounts.
     columns:
       - name: customer_sk
         description: Surrogate key for the customer, generated as md5(customer_id).
@@ -33,7 +33,7 @@ models:
           - not_null
 
   - name: dim_account
-    description: Account dimension. One row per account, sourced from int_customer_accounts to avoid duplication from opportunity joins.
+    description: Account dimension. One row per account, sourced from int_customers__joined_accounts to avoid duplication from opportunity joins.
     columns:
       - name: account_sk
         description: Surrogate key for the account, generated as md5(account_id).
@@ -54,6 +54,8 @@ models:
               field: customer_id
       - name: account_name
         description: Name of the account.
+        tests:
+          - not_null
       - name: account_type
         description: Type/category of the account.
         tests:
@@ -64,7 +66,7 @@ models:
         description: Reported annual revenue for the account.
 
   - name: fct_opportunity
-    description: Opportunity fact table. One row per opportunity, sourced from int_customer_opportunities.
+    description: Opportunity fact table. One row per opportunity, sourced from int_customers__joined_opportunities.
     columns:
       - name: opportunity_sk
         description: Surrogate key for the opportunity, generated as md5(opportunity_id).
@@ -114,6 +116,12 @@ models:
               values: ['SMALL', 'MEDIUM', 'LARGE']
       - name: close_date
         description: Date the opportunity closed or is expected to close.
+        tests:
+          - not_null
+      - name: updated_date
+        description: Last-modified timestamp from the source system. Used as the incremental watermark for this model.
+        tests:
+          - not_null
       - name: is_won
         description: Boolean flag, true when opportunity_status is WON.
       - name: is_lost

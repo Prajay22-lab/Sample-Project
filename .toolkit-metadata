@@ -1,0 +1,7 @@
+resources:
+- resource: dbt-architect/SKILL.md
+  path: .claude\skills\dbt-architect\SKILL.md
+  version: 0
+  timestamp: 2026-09-10T10:12:58.290843900Z
+  size: 5694
+  hash: bd73c607cf9b8f03b409ea65a0387515
