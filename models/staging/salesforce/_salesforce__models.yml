@@ -17,7 +17,8 @@ models:
         description: Lifecycle status of the customer, uppercased.
         tests:
           - accepted_values:
-              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+              arguments:
+                values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
 
   - name: stg_accounts
     description: Staging model for Salesforce account records. Cleans text fields (trim/case normalization) from the raw ACCOUNTS source table.
@@ -32,8 +33,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_customers')
-              field: customer_id
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
       - name: account_type
         description: Type/category of the account, uppercased and trimmed.
         tests:
@@ -52,8 +54,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_accounts')
-              field: account_id
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
       - name: amount
         description: Monetary value of the opportunity.
         tests:
@@ -63,4 +66,5 @@ models:
         description: Sales stage of the opportunity, uppercased and trimmed.
         tests:
           - accepted_values:
-              values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
+              arguments:
+                values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
