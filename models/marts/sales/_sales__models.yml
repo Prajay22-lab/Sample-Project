@@ -26,7 +26,8 @@ models:
         description: Lifecycle status of the customer.
         tests:
           - accepted_values:
-              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+              arguments:
+                values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: account_count
         description: Number of distinct accounts owned by this customer.
         tests:
@@ -50,8 +51,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('dim_customer')
-              field: customer_id
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
       - name: account_name
         description: Name of the account.
         tests:
@@ -83,27 +85,31 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('dim_account')
-              field: account_id
+              arguments:
+                to: ref('dim_account')
+                field: account_id
       - name: customer_id
         description: Foreign key referencing the customer that owns the related account.
         tests:
           - not_null
           - relationships:
-              to: ref('dim_customer')
-              field: customer_id
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
       - name: opportunity_name
         description: Name of the opportunity.
       - name: stage
         description: Sales stage of the opportunity.
         tests:
           - accepted_values:
-              values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
+              arguments:
+                values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
       - name: opportunity_status
         description: Simplified status derived from stage (WON, LOST, or OPEN).
         tests:
           - accepted_values:
-              values: ['WON', 'LOST', 'OPEN']
+              arguments:
+                values: ['WON', 'LOST', 'OPEN']
       - name: opportunity_amount
         description: Monetary value of the opportunity.
         tests:
@@ -113,7 +119,8 @@ models:
         description: Size category of the opportunity amount (SMALL, MEDIUM, LARGE), derived via the opportunity_amount_category macro.
         tests:
           - accepted_values:
-              values: ['SMALL', 'MEDIUM', 'LARGE']
+              arguments:
+                values: ['SMALL', 'MEDIUM', 'LARGE']
       - name: close_date
         description: Date the opportunity closed or is expected to close.
         tests:
@@ -143,8 +150,9 @@ models:
           - unique
           - not_null
           - relationships:
-              to: ref('dim_customer')
-              field: customer_id
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
       - name: customer_name
         description: Customer's full name.
       - name: email
@@ -155,7 +163,8 @@ models:
         description: Lifecycle status of the customer.
         tests:
           - accepted_values:
-              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+              arguments:
+                values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: total_accounts
         description: Total number of accounts owned by the customer.
         tests:
@@ -203,8 +212,9 @@ models:
           - unique
           - not_null
           - relationships:
-              to: ref('dim_customer')
-              field: customer_id
+              arguments:
+                to: ref('dim_customer')
+                field: customer_id
       - name: customer_name
         description: Customer's full name (first + last).
       - name: opportunity_count
