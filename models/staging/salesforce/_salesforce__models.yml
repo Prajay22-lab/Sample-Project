@@ -47,16 +47,11 @@ models:
           Source is Salesforce customer_status.
         tests:
           - accepted_values:
-<<<<<<< HEAD
               values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: created_date
         description: Timestamp the customer record was created in Salesforce. Passed through unchanged.
       - name: updated_date
         description: Timestamp the customer record was last modified in Salesforce. Passed through unchanged.
-=======
-              arguments:
-                values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
->>>>>>> c2b519dbb8cf568409d55e14b8beaf092fa89f46
 
   - name: stg_accounts
     description: >
@@ -85,18 +80,12 @@ models:
         tests:
           - not_null
           - relationships:
-<<<<<<< HEAD
               to: ref('stg_customers')
               field: customer_id
       - name: account_name
         description: >
           Name of the account/company, trimmed and uppercased.
           Source is Salesforce account_name.
-=======
-              arguments:
-                to: ref('stg_customers')
-                field: customer_id
->>>>>>> c2b519dbb8cf568409d55e14b8beaf092fa89f46
       - name: account_type
         description: >
           Type/category of the account, uppercased and trimmed.
@@ -143,18 +132,12 @@ models:
         tests:
           - not_null
           - relationships:
-<<<<<<< HEAD
               to: ref('stg_accounts')
               field: account_id
       - name: opportunity_name
         description: >
           Name of the opportunity/deal, trimmed and uppercased.
           Source is Salesforce opportunity_name.
-=======
-              arguments:
-                to: ref('stg_accounts')
-                field: account_id
->>>>>>> c2b519dbb8cf568409d55e14b8beaf092fa89f46
       - name: amount
         description: >
           Monetary value of the opportunity, in USD. Never negative
@@ -171,7 +154,6 @@ models:
           stages; CLOSED WON and CLOSED LOST are terminal outcomes.
         tests:
           - accepted_values:
-<<<<<<< HEAD
               values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
       - name: close_date
         description: Date the opportunity closed, or is expected to close if still open. Passed through unchanged from Salesforce.
@@ -182,7 +164,3 @@ models:
           Timestamp the opportunity record was last modified in Salesforce.
           Used downstream as the incremental watermark for fct_opportunity,
           since an opportunity's amount/stage can change after its close_date.
-=======
-              arguments:
-                values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
->>>>>>> c2b519dbb8cf568409d55e14b8beaf092fa89f46

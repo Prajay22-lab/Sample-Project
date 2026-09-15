@@ -46,10 +46,4 @@ models:
 snapshots:
   firstdbtproject:
     +tags: ["snapshot"]
-<<<<<<< HEAD
-dbt-cloud:
-  project-id: 70506183166197
-=======
-flags:
-  require_generic_test_arguments_property: true
->>>>>>> c2b519dbb8cf568409d55e14b8beaf092fa89f46
+
