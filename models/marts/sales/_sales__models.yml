@@ -2,7 +2,21 @@ version: 2
 
 models:
   - name: dim_customer
-    description: Customer dimension. One row per customer, with an account count rolled up from int_customers__joined_accounts.
+    description: >
+      **Grain**: One row per customer.
+
+      Customer dimension. One row per customer, with an account count rolled
+      up from int_customers__joined_accounts. Includes customers with zero
+      accounts (account_count = 0).
+
+      **Update frequency**: Full refresh on every run (materialized as a table).
+
+      **Owner**: analytics-team
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: true
     columns:
       - name: customer_sk
         description: Surrogate key for the customer, generated as md5(customer_id).
@@ -23,18 +37,33 @@ models:
       - name: country
         description: Customer country, cleaned via the clean_text macro (trimmed and uppercased).
       - name: customer_status
-        description: Lifecycle status of the customer.
+        description: >
+          Lifecycle status of the customer. ACTIVE = currently engaged customer;
+          INACTIVE = churned or dormant; PROSPECT = not yet a paying customer.
         tests:
           - accepted_values:
               arguments:
                 values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: account_count
-        description: Number of distinct accounts owned by this customer.
+        description: Number of distinct accounts owned by this customer. 0 for customers with no accounts (not null).
         tests:
           - not_null
 
   - name: dim_account
-    description: Account dimension. One row per account, sourced from int_customers__joined_accounts to avoid duplication from opportunity joins.
+    description: >
+      **Grain**: One row per account.
+
+      Account dimension. One row per account, sourced from
+      int_customers__joined_accounts to avoid duplication from opportunity joins.
+
+      **Update frequency**: Full refresh on every run (materialized as a table).
+
+      **Owner**: analytics-team
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: false
     columns:
       - name: account_sk
         description: Surrogate key for the account, generated as md5(account_id).
@@ -63,12 +92,35 @@ models:
         tests:
           - not_null
       - name: industry
-        description: Industry the account operates in.
+        description: Industry the account operates in. Free text; not standardized against a fixed list.
       - name: annual_revenue
-        description: Reported annual revenue for the account.
+        description: Reported annual revenue for the account, in USD. May be null if not captured for the account.
 
   - name: fct_opportunity
-    description: Opportunity fact table. One row per opportunity, sourced from int_customers__joined_opportunities.
+    description: >
+      **Grain**: One row per opportunity.
+
+      Opportunity fact table. One row per opportunity, sourced from
+      int_customers__joined_opportunities.
+
+      **Key relationships**:
+      - Joins to dim_account on account_id
+      - Joins to dim_customer on customer_id
+
+      **Update frequency**: Incremental (merge), watermarked on updated_date.
+      Only opportunities updated since the last run are reprocessed; a target
+      table built before the updated_date column existed falls back to a full backfill.
+
+      **Owner**: analytics-team
+
+      **Known issues**:
+      - Rows with a null opportunity_id in the source are dropped, so this
+        table is not guaranteed to match raw opportunity row counts exactly.
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: false
     columns:
       - name: opportunity_sk
         description: Surrogate key for the opportunity, generated as md5(opportunity_id).
@@ -97,47 +149,74 @@ models:
                 to: ref('dim_customer')
                 field: customer_id
       - name: opportunity_name
-        description: Name of the opportunity.
+        description: Name of the opportunity/deal.
       - name: stage
-        description: Sales stage of the opportunity.
+        description: >
+          Sales pipeline stage of the opportunity. PROSPECTING/QUALIFICATION/
+          PROPOSAL/NEGOTIATION are open stages; CLOSED WON and CLOSED LOST are
+          terminal outcomes and drive opportunity_status below.
         tests:
           - accepted_values:
               arguments:
                 values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
       - name: opportunity_status
-        description: Simplified status derived from stage (WON, LOST, or OPEN).
+        description: >
+          Simplified status derived from stage: WON when stage is CLOSED WON,
+          LOST when stage is CLOSED LOST, otherwise OPEN.
         tests:
           - accepted_values:
               arguments:
                 values: ['WON', 'LOST', 'OPEN']
       - name: opportunity_amount
-        description: Monetary value of the opportunity.
+        description: Monetary value of the opportunity, in USD. Never negative.
         tests:
           - not_null
           - non_negative
       - name: opportunity_amount_category
-        description: Size category of the opportunity amount (SMALL, MEDIUM, LARGE), derived via the opportunity_amount_category macro.
+        description: >
+          Size bucket for the opportunity amount, via the opportunity_amount_category
+          macro: SMALL (< $250,000), MEDIUM ($250,000-$499,999), LARGE (>= $500,000).
         tests:
           - accepted_values:
               arguments:
                 values: ['SMALL', 'MEDIUM', 'LARGE']
       - name: close_date
-        description: Date the opportunity closed or is expected to close.
+        description: Date the opportunity closed, or is expected to close if still open.
         tests:
           - not_null
       - name: updated_date
-        description: Last-modified timestamp from the source system. Used as the incremental watermark for this model.
+        description: >
+          Last-modified timestamp from the source system. Used as the
+          incremental watermark for this model, since an opportunity's amount
+          or stage can change after its close_date without close_date moving.
         tests:
           - not_null
       - name: is_won
-        description: Boolean flag, true when opportunity_status is WON.
+        description: Boolean flag, true when opportunity_status is WON. Convenience flag for BI tools that don't filter on strings well.
       - name: is_lost
-        description: Boolean flag, true when opportunity_status is LOST.
+        description: Boolean flag, true when opportunity_status is LOST. Convenience flag for BI tools that don't filter on strings well.
       - name: is_open
-        description: Boolean flag, true when opportunity_status is OPEN.
+        description: Boolean flag, true when opportunity_status is OPEN. Convenience flag for BI tools that don't filter on strings well.
 
   - name: customer_360
-    description: Consolidated customer-level reporting mart. One row per customer, with account and opportunity metrics pre-aggregated before joining to dim_customer.
+    description: >
+      **Grain**: One row per customer.
+
+      Consolidated customer-level reporting mart. One row per customer, with
+      account and opportunity metrics pre-aggregated to customer_id before
+      joining to dim_customer, so the join cannot fan out. Includes customers
+      with zero accounts or opportunities (metrics default to 0).
+
+      **Purpose**: Primary source for customer-level sales/pipeline dashboards.
+
+      **Update frequency**: Full refresh on every run (materialized as a table).
+
+      **Owner**: analytics-team
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: true
     columns:
       - name: customer_sk
         description: Surrogate key for the customer, generated as md5(customer_id).
@@ -154,57 +233,78 @@ models:
                 to: ref('dim_customer')
                 field: customer_id
       - name: customer_name
-        description: Customer's full name.
+        description: Customer's full name (first + last).
       - name: email
         description: Customer email address.
       - name: country
         description: Customer country.
       - name: customer_status
-        description: Lifecycle status of the customer.
+        description: >
+          Lifecycle status of the customer. ACTIVE = currently engaged customer;
+          INACTIVE = churned or dormant; PROSPECT = not yet a paying customer.
         tests:
           - accepted_values:
               arguments:
                 values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: total_accounts
-        description: Total number of accounts owned by the customer.
+        description: Total number of accounts owned by the customer. 0 for customers with no accounts (not null).
         tests:
           - not_null
       - name: total_opportunities
-        description: Total number of opportunities across all of the customer's accounts.
+        description: Total number of opportunities across all of the customer's accounts. 0 for customers with no opportunities (not null).
         tests:
           - not_null
       - name: total_opportunity_amount
-        description: Sum of opportunity amounts across all of the customer's opportunities.
+        description: Sum of opportunity amounts across all of the customer's opportunities, in USD. 0 for customers with no opportunities.
         tests:
           - not_null
           - non_negative
       - name: won_opportunity_count
-        description: Count of opportunities with status WON.
+        description: Count of the customer's opportunities with opportunity_status WON (stage CLOSED WON).
         tests:
           - not_null
       - name: lost_opportunity_count
-        description: Count of opportunities with status LOST.
+        description: Count of the customer's opportunities with opportunity_status LOST (stage CLOSED LOST).
         tests:
           - not_null
       - name: open_opportunity_count
-        description: Count of opportunities with status OPEN.
+        description: Count of the customer's opportunities with opportunity_status OPEN (any non-terminal stage).
         tests:
           - not_null
       - name: total_won_amount
-        description: Sum of opportunity amounts with status WON.
+        description: Sum of opportunity amounts for the customer's WON opportunities, in USD.
         tests:
           - not_null
           - non_negative
       - name: total_open_amount
-        description: Sum of opportunity amounts with status OPEN.
+        description: Sum of opportunity amounts for the customer's OPEN opportunities, in USD.
         tests:
           - not_null
           - non_negative
 
   - name: customer_pipeline_summary
     description: >
+      **Grain**: One row per ACTIVE customer.
+
       Migrated from legacy Spark logic. One row per ACTIVE customer, with
-      opportunity volume and won/open pipeline amounts.
+      opportunity volume and won/open pipeline amounts. Unlike customer_360,
+      customers with customer_status other than ACTIVE, and customers with
+      zero opportunities, do not appear in this model at all (no zero-filled row).
+
+      **Definitions**:
+      - "won" = opportunities with stage CLOSED WON
+      - "open" = opportunities with any stage other than CLOSED WON or CLOSED LOST
+        (there is no single literal 'Open' stage in this source system, unlike
+        the legacy system this model replaces)
+
+      **Update frequency**: Full refresh on every run (materialized as a table).
+
+      **Owner**: analytics-team
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: true
     columns:
       - name: customer_id
         description: Natural key of the active customer.
@@ -218,16 +318,16 @@ models:
       - name: customer_name
         description: Customer's full name (first + last).
       - name: opportunity_count
-        description: Count of opportunities belonging to the customer.
+        description: Count of opportunities belonging to the customer (across all of their accounts).
         tests:
           - not_null
       - name: won_amount
-        description: Sum of opportunity amounts with stage CLOSED WON.
+        description: Sum of opportunity amounts with stage CLOSED WON, in USD. 0 if the customer has no won opportunities.
         tests:
           - not_null
           - non_negative
       - name: open_amount
-        description: Sum of opportunity amounts with any non-closed stage.
+        description: Sum of opportunity amounts with any non-closed stage, in USD. 0 if the customer has no open opportunities.
         tests:
           - not_null
           - non_negative

@@ -1,0 +1,26 @@
+version: 2
+
+macros:
+  - name: clean_text
+    description: >
+      Standardizes a free-text column by trimming whitespace and uppercasing
+      it. Used across staging and mart models to normalize inconsistently
+      entered Salesforce text fields (e.g. country, customer_status) so
+      accepted_values tests and joins behave consistently regardless of how
+      the value was entered upstream.
+    arguments:
+      - name: column
+        type: column
+        description: The column name (or expression) to clean. Passed through unquoted, e.g. clean_text('country').
+
+  - name: opportunity_amount_category
+    description: >
+      Buckets an opportunity amount into a business-defined size category.
+      Thresholds: SMALL is less than $250,000, MEDIUM is $250,000 up to (but
+      not including) $500,000, and LARGE is $500,000 or more. Returns NULL if
+      the amount itself is null. Used in fct_opportunity and the intermediate
+      sales models to segment pipeline by deal size.
+    arguments:
+      - name: amount
+        type: float
+        description: The opportunity amount column (or expression) to categorize, e.g. opportunity_amount_category('amount').

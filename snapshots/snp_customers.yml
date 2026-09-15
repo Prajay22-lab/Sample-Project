@@ -2,15 +2,61 @@ version: 2
 
 snapshots:
   - name: snp_customers
-    description: Type-2 history of stg_customers, tracked via updated_date.
+    description: >
+      **Grain**: One row per customer per historical version.
+
+      Type-2 history of stg_customers, tracked via the timestamp strategy on
+      updated_date: a new row is inserted whenever a tracked column value
+      changes and updated_date advances. Lets downstream analysis reconstruct
+      "what was this customer's status/email/country as of date X" rather
+      than only ever seeing the current value.
+
+      **Update frequency**: Appends new versions on every snapshot run; existing
+      historical rows are never modified once dbt_valid_to is set.
+
+      **Owner**: analytics-team
+    config:
+      meta:
+        owner: analytics-team
+        tier: gold
+        pii: true
     columns:
       - name: customer_id
-        description: Natural key of the customer.
+        description: Natural key of the customer, from stg_customers. Repeats once per historical version of that customer.
         tests:
           - not_null
+      - name: first_name
+        description: Customer's first name at this point in the record's history, from stg_customers.
+      - name: last_name
+        description: Customer's last name at this point in the record's history, from stg_customers.
+      - name: email
+        description: Customer email address at this point in the record's history, from stg_customers.
+      - name: country
+        description: Customer country at this point in the record's history, from stg_customers.
+      - name: customer_status
+        description: >
+          Lifecycle status (ACTIVE/INACTIVE/PROSPECT) at this point in the
+          record's history, from stg_customers. Tracking this over time is the
+          main reason this snapshot exists, e.g. to measure time-to-churn.
+      - name: created_date
+        description: Timestamp the customer record was originally created in Salesforce (not the snapshot version's creation time).
+      - name: updated_date
+        description: >
+          Timestamp of the source update that produced this version. This is
+          the strategy field: dbt compares it to the current open row's value
+          to decide whether to close it out and insert a new version.
       - name: dbt_valid_from
+        description: Timestamp this version became active (first seen with these column values).
         tests:
           - not_null
+      - name: dbt_valid_to
+        description: >
+          Timestamp this version stopped being active, i.e. when a newer
+          version was captured. NULL for the current/most recent version of each customer.
+      - name: dbt_scd_id
+        description: dbt-generated surrogate key uniquely identifying this snapshot row/version.
+      - name: dbt_updated_at
+        description: dbt-generated timestamp of the source updated_date value used to detect this change, duplicating updated_date.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
