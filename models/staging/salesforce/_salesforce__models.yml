@@ -2,65 +2,165 @@ version: 2
 
 models:
   - name: stg_customers
-    description: Staging model for Salesforce customer records. Cleans text fields (trim/case normalization) from the raw CUSTOMERS source table.
+    description: >
+      **Grain**: One row per Salesforce customer.
+
+      Staging model for Salesforce customer records. Cleans text fields
+      (trim/case normalization) from the raw CUSTOMERS source table.
+      Performs no filtering or aggregation, so row count matches the source 1:1.
+    config:
+      meta:
+        owner: analytics-team
+        tier: staging
+        pii: true
     columns:
       - name: customer_id
-        description: Unique identifier for a customer. Primary key of this model.
+        description: >
+          Unique identifier for a customer. Primary key of this model.
+          Source is Salesforce customer_id, passed through unchanged.
         tests:
           - not_null
           - unique
+      - name: first_name
+        description: >
+          Customer's first name, trimmed and uppercased.
+          Source is Salesforce first_name.
+      - name: last_name
+        description: >
+          Customer's last name, trimmed and uppercased.
+          Source is Salesforce last_name.
       - name: email
-        description: Customer email address, lowercased and trimmed.
+        description: >
+          Customer email address, lowercased and trimmed.
+          Source is Salesforce email. Not validated for format.
         tests:
           - not_null
+      - name: country
+        description: >
+          Customer country, trimmed. Free text; not standardized against a
+          fixed country list. Source is Salesforce country.
       - name: customer_status
-        description: Lifecycle status of the customer, uppercased.
+        description: >
+          Lifecycle status of the customer, uppercased via the clean_text macro.
+          ACTIVE means a currently engaged customer, INACTIVE means churned
+          or dormant, PROSPECT means not yet a paying customer.
+          Source is Salesforce customer_status.
         tests:
           - accepted_values:
               values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+      - name: created_date
+        description: Timestamp the customer record was created in Salesforce. Passed through unchanged.
+      - name: updated_date
+        description: Timestamp the customer record was last modified in Salesforce. Passed through unchanged.
 
   - name: stg_accounts
-    description: Staging model for Salesforce account records. Cleans text fields (trim/case normalization) from the raw ACCOUNTS source table.
+    description: >
+      **Grain**: One row per Salesforce account.
+
+      Staging model for Salesforce account records. Cleans text fields
+      (trim/case normalization) from the raw ACCOUNTS source table.
+      Performs no filtering or aggregation, so row count matches the source 1:1.
+    config:
+      meta:
+        owner: analytics-team
+        tier: staging
+        pii: false
     columns:
       - name: account_id
-        description: Unique identifier for an account. Primary key of this model.
+        description: >
+          Unique identifier for an account. Primary key of this model.
+          Source is Salesforce account_id, passed through unchanged.
         tests:
           - not_null
           - unique
       - name: customer_id
-        description: Foreign key referencing the customer that owns this account.
+        description: >
+          Foreign key referencing the customer that owns this account.
+          Source is Salesforce customer_id, passed through unchanged.
         tests:
           - not_null
           - relationships:
               to: ref('stg_customers')
               field: customer_id
+      - name: account_name
+        description: >
+          Name of the account/company, trimmed and uppercased.
+          Source is Salesforce account_name.
       - name: account_type
-        description: Type/category of the account, uppercased and trimmed.
+        description: >
+          Type/category of the account, uppercased and trimmed.
+          Source is Salesforce account_type.
         tests:
           - not_null
+      - name: industry
+        description: >
+          Industry the account operates in, trimmed and uppercased. Free
+          text; not standardized against a fixed list. Source is Salesforce industry.
+      - name: annual_revenue
+        description: >
+          Reported annual revenue for the account, in USD. Passed through
+          unchanged from Salesforce. May be null if not captured for the account.
+      - name: created_date
+        description: Timestamp the account record was created in Salesforce. Passed through unchanged.
+      - name: updated_date
+        description: Timestamp the account record was last modified in Salesforce. Passed through unchanged.
 
   - name: stg_opportunities
-    description: Staging model for Salesforce opportunity records. Cleans text fields (trim/case normalization) from the raw OPPORTUNITIES source table.
+    description: >
+      **Grain**: One row per Salesforce opportunity.
+
+      Staging model for Salesforce opportunity records. Cleans text fields
+      (trim/case normalization) from the raw OPPORTUNITIES source table.
+      Performs no filtering or aggregation, so row count matches the source 1:1.
+    config:
+      meta:
+        owner: analytics-team
+        tier: staging
+        pii: false
     columns:
       - name: opportunity_id
-        description: Unique identifier for an opportunity. Primary key of this model.
+        description: >
+          Unique identifier for an opportunity. Primary key of this model.
+          Source is Salesforce opportunity_id, passed through unchanged.
         tests:
           - not_null
           - unique
       - name: account_id
-        description: Foreign key referencing the account this opportunity belongs to.
+        description: >
+          Foreign key referencing the account this opportunity belongs to.
+          Source is Salesforce account_id, passed through unchanged.
         tests:
           - not_null
           - relationships:
               to: ref('stg_accounts')
               field: account_id
+      - name: opportunity_name
+        description: >
+          Name of the opportunity/deal, trimmed and uppercased.
+          Source is Salesforce opportunity_name.
       - name: amount
-        description: Monetary value of the opportunity.
+        description: >
+          Monetary value of the opportunity, in USD. Never negative
+          (enforced by the non_negative test). Used as the basis for
+          opportunity_amount_category (see fct_opportunity) and all
+          pipeline revenue rollups.
         tests:
           - not_null
           - non_negative
       - name: stage
-        description: Sales stage of the opportunity, uppercased and trimmed.
+        description: >
+          Sales pipeline stage of the opportunity, uppercased and trimmed.
+          PROSPECTING, QUALIFICATION, PROPOSAL, and NEGOTIATION are open
+          stages; CLOSED WON and CLOSED LOST are terminal outcomes.
         tests:
           - accepted_values:
               values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
+      - name: close_date
+        description: Date the opportunity closed, or is expected to close if still open. Passed through unchanged from Salesforce.
+      - name: created_date
+        description: Timestamp the opportunity record was created in Salesforce. Passed through unchanged.
+      - name: updated_date
+        description: >
+          Timestamp the opportunity record was last modified in Salesforce.
+          Used downstream as the incremental watermark for fct_opportunity,
+          since an opportunity's amount/stage can change after its close_date.

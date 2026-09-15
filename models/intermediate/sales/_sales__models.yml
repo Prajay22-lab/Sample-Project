@@ -2,7 +2,13 @@ version: 2
 
 models:
   - name: int_customers__joined_accounts
-    description: Combines each customer with their account(s). One row per customer/account pair.
+    description: >
+      **Grain**: One row per customer/account pair.
+
+      Combines each customer with their account(s) via a left join, so
+      customers with zero accounts are still represented (with null account
+      fields). Feeds dim_customer (account rollup) and dim_account (account
+      base). Not intended for direct reporting use.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -12,11 +18,38 @@ models:
         description: Natural key of the customer, from stg_customers. Never null (left join is customer -> account).
         tests:
           - not_null
+      - name: first_name
+        description: Customer's first name, from stg_customers.
+      - name: last_name
+        description: Customer's last name, from stg_customers.
+      - name: email
+        description: Customer email address, from stg_customers.
+      - name: country
+        description: Customer country, from stg_customers.
+      - name: customer_status
+        description: Lifecycle status of the customer, from stg_customers (ACTIVE/INACTIVE/PROSPECT).
+      - name: customer_name
+        description: Customer's full name, derived as first_name || ' ' || last_name.
       - name: account_id
         description: Natural key of the account, from stg_accounts. Null when the customer has no accounts.
+      - name: account_name
+        description: Name of the account, from stg_accounts. Null when the customer has no accounts.
+      - name: account_type
+        description: Type/category of the account, from stg_accounts. Null when the customer has no accounts.
+      - name: industry
+        description: Industry the account operates in, from stg_accounts. Null when the customer has no accounts.
+      - name: annual_revenue
+        description: Reported annual revenue for the account, from stg_accounts. Null when the customer has no accounts.
 
   - name: int_accounts__joined_opportunities
-    description: Combines each account with its opportunity(ies). One row per account/opportunity pair.
+    description: >
+      **Grain**: One row per account/opportunity pair.
+
+      Combines each account with its opportunity(ies) via a left join, so
+      accounts with zero opportunities are still represented (with null
+      opportunity fields). Derives opportunity_status (WON/LOST/OPEN) and
+      opportunity_amount_category (SMALL/MEDIUM/LARGE) from stage and amount.
+      Feeds int_customers__joined_opportunities and dim_account.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -26,25 +59,78 @@ models:
         description: Natural key of the account, from stg_accounts. Never null (left join is account -> opportunity).
         tests:
           - not_null
+      - name: customer_id
+        description: Foreign key to the customer owning this account, from stg_accounts.
+      - name: account_name
+        description: Name of the account, from stg_accounts.
+      - name: account_type
+        description: Type/category of the account, from stg_accounts.
+      - name: industry
+        description: Industry the account operates in, from stg_accounts.
+      - name: annual_revenue
+        description: Reported annual revenue for the account, from stg_accounts.
       - name: opportunity_id
         description: Natural key of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: opportunity_name
+        description: Name of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: stage
+        description: Sales pipeline stage of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: amount
+        description: Monetary value of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: close_date
+        description: Date the opportunity closed or is expected to close, from stg_opportunities. Null when the account has no opportunities.
+      - name: updated_date
+        description: Last-modified timestamp of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: opportunity_status
+        description: >
+          Simplified status derived from stage: WON when stage is CLOSED WON,
+          LOST when stage is CLOSED LOST, otherwise OPEN. Null when the account
+          has no opportunities.
+        tests:
+          - accepted_values:
+              values: ['WON', 'LOST', 'OPEN']
+      - name: opportunity_amount_category
+        description: >
+          Size bucket for the opportunity amount, via the opportunity_amount_category
+          macro: SMALL (< $250,000), MEDIUM ($250,000-$499,999), LARGE (>= $500,000).
+          Null when the account has no opportunities.
+        tests:
+          - accepted_values:
+              values: ['SMALL', 'MEDIUM', 'LARGE']
 
   - name: int_customers__active_with_opportunities
     description: >
-      Active customers left-joined to their opportunities via accounts.
-      One row per active customer/opportunity pair.
+      **Grain**: One row per active customer/opportunity pair.
+
+      Active customers (customer_status = 'ACTIVE') left-joined to their
+      opportunities via accounts (opportunities link to customers through
+      account_id -> customer_id, not directly). Mirrors legacy Spark
+      filter-then-join logic. Feeds customer_pipeline_summary.
     columns:
       - name: customer_id
-        description: Natural key of the customer, from stg_customers. Never null (left join is customer -> opportunity).
+        description: Natural key of the customer, from stg_customers. Never null (left join is customer -> opportunity). Only ACTIVE customers appear here.
         tests:
           - not_null
+      - name: customer_name
+        description: Customer's full name, derived as first_name || ' ' || last_name.
+      - name: customer_status
+        description: Lifecycle status of the customer. Always 'ACTIVE' in this model, since inactive/prospect customers are filtered out.
       - name: opportunity_id
         description: Natural key of the opportunity, from stg_opportunities. Null when the customer's accounts have no opportunities.
+      - name: stage
+        description: Sales pipeline stage of the opportunity, from stg_opportunities. Null when the customer's accounts have no opportunities.
+      - name: amount
+        description: Monetary value of the opportunity, from stg_opportunities. Null when the customer's accounts have no opportunities.
 
   - name: int_customers__joined_opportunities
     description: >
+      **Grain**: One row per account/opportunity pair (customer attributes and
+      account-and-customer-level opportunity totals denormalized onto each row).
+
       Customer-level opportunity dataset at opportunity grain, with
       account-level and customer-level opportunity totals via window functions.
+      Feeds fct_opportunity. Includes customers/accounts with no opportunities
+      (opportunity fields null in that case).
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -54,7 +140,58 @@ models:
         description: Natural key of the customer, from stg_customers. Never null (left join is customer -> opportunity).
         tests:
           - not_null
+      - name: customer_name
+        description: Customer's full name, from int_customers__joined_accounts.
+      - name: email
+        description: Customer email address, from int_customers__joined_accounts.
+      - name: country
+        description: Customer country, from int_customers__joined_accounts.
+      - name: customer_status
+        description: Lifecycle status of the customer, from int_customers__joined_accounts.
       - name: account_id
         description: Natural key of the account, from stg_accounts. Null when the customer has no accounts.
+      - name: account_name
+        description: Name of the account, from int_customers__joined_accounts. Null when the customer has no accounts.
+      - name: account_type
+        description: Type/category of the account, from int_customers__joined_accounts. Null when the customer has no accounts.
+      - name: industry
+        description: Industry the account operates in, from int_customers__joined_accounts. Null when the customer has no accounts.
       - name: opportunity_id
         description: Natural key of the opportunity, from stg_opportunities. Null when the account has no opportunities.
+      - name: opportunity_name
+        description: Name of the opportunity, from int_accounts__joined_opportunities. Null when the account has no opportunities.
+      - name: stage
+        description: Sales pipeline stage of the opportunity. Null when the account has no opportunities.
+      - name: opportunity_amount
+        description: Monetary value of the opportunity. Null when the account has no opportunities.
+      - name: close_date
+        description: Date the opportunity closed or is expected to close. Null when the account has no opportunities.
+      - name: updated_date
+        description: Last-modified timestamp of the opportunity. Null when the account has no opportunities.
+      - name: opportunity_status
+        description: Simplified status derived from stage (WON/LOST/OPEN). Null when the account has no opportunities.
+        tests:
+          - accepted_values:
+              values: ['WON', 'LOST', 'OPEN']
+      - name: opportunity_amount_category
+        description: >
+          Size bucket for the opportunity amount (SMALL/MEDIUM/LARGE, see
+          opportunity_amount_category macro). Null when the account has no opportunities.
+        tests:
+          - accepted_values:
+              values: ['SMALL', 'MEDIUM', 'LARGE']
+      - name: total_account_opportunity_amount
+        description: >
+          Sum of opportunity amounts across all opportunities on this account,
+          computed via a window function partitioned by account_id. Repeated
+          on every row for the account (not deduplicated at this grain).
+      - name: customer_opportunity_count
+        description: >
+          Count of opportunities across all of the customer's accounts,
+          computed via a window function partitioned by customer_id. Repeated
+          on every row for the customer (not deduplicated at this grain).
+      - name: customer_total_opportunity_amount
+        description: >
+          Sum of opportunity amounts across all of the customer's accounts,
+          computed via a window function partitioned by customer_id. Repeated
+          on every row for the customer (not deduplicated at this grain).

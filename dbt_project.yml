@@ -47,3 +47,5 @@ models:
 snapshots:
   firstdbtproject:
     +tags: ["snapshot"]
+dbt-cloud:
+  project-id: 70506183166197

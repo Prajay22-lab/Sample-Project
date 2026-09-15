@@ -4,6 +4,12 @@ sources:
   - name: salesforce
     database: DBT_DEV
     schema: RAW
+    description: >
+      Raw Salesforce CRM tables (customers, accounts, opportunities), landed
+      as-is with no cleaning or type normalization applied.
+      Loaded-at is tracked via each table's `updated_date` column.
+      **Freshness**: warn if a table hasn't been updated in 24 hours,
+      error if not updated in 48 hours.
     config:
       loaded_at_field: updated_date
       freshness:
@@ -11,5 +17,77 @@ sources:
         error_after: {count: 48, period: hour}
     tables:
       - name: customers
+        description: >
+          One row per Salesforce customer/contact record. Raw text fields are
+          untrimmed and case-inconsistent until cleaned in stg_customers.
+        columns:
+          - name: customer_id
+            description: Unique identifier for a customer record in Salesforce. Primary key.
+          - name: first_name
+            description: Customer's first name, as entered in Salesforce. Case and whitespace not normalized.
+          - name: last_name
+            description: Customer's last name, as entered in Salesforce. Case and whitespace not normalized.
+          - name: email
+            description: Customer email address, as entered in Salesforce. Case and whitespace not normalized.
+          - name: country
+            description: Customer's country, as entered in Salesforce. Free text, not normalized against a country list.
+          - name: customer_status
+            description: >
+              Lifecycle status of the customer as recorded in Salesforce
+              (e.g. active, inactive, prospect). Case not normalized;
+              see stg_customers for the standardized ACTIVE/INACTIVE/PROSPECT values.
+          - name: created_date
+            description: Timestamp the customer record was created in Salesforce.
+          - name: updated_date
+            description: >
+              Timestamp the customer record was last modified in Salesforce.
+              Used as the source freshness/loaded-at field.
+
       - name: accounts
+        description: >
+          One row per Salesforce account. An account represents a company or
+          organization tied to a customer; a customer may own multiple accounts.
+        columns:
+          - name: account_id
+            description: Unique identifier for an account record in Salesforce. Primary key.
+          - name: customer_id
+            description: Identifier of the customer that owns this account. Foreign key to the customers table.
+          - name: account_name
+            description: Name of the account/company, as entered in Salesforce. Case and whitespace not normalized.
+          - name: account_type
+            description: Type/category of the account (e.g. customer, partner, prospect), as entered in Salesforce.
+          - name: industry
+            description: Industry the account operates in, as entered in Salesforce. Free text, not normalized against a fixed list.
+          - name: annual_revenue
+            description: Reported annual revenue for the account, in USD, as entered in Salesforce.
+          - name: created_date
+            description: Timestamp the account record was created in Salesforce.
+          - name: updated_date
+            description: Timestamp the account record was last modified in Salesforce.
+
       - name: opportunities
+        description: >
+          One row per Salesforce sales opportunity. Opportunities belong to
+          accounts and move through a pipeline of stages toward a won or lost outcome.
+        columns:
+          - name: opportunity_id
+            description: Unique identifier for an opportunity record in Salesforce. Primary key.
+          - name: account_id
+            description: Identifier of the account this opportunity belongs to. Foreign key to the accounts table.
+          - name: opportunity_name
+            description: Name of the opportunity/deal, as entered in Salesforce.
+          - name: stage
+            description: >
+              Sales pipeline stage of the opportunity as recorded in Salesforce
+              (e.g. prospecting, qualification, proposal, negotiation, closed won, closed lost).
+              Case not normalized; see stg_opportunities for the standardized uppercase values.
+          - name: amount
+            description: Monetary value of the opportunity, in USD.
+          - name: close_date
+            description: Date the opportunity closed, or is expected to close if still open.
+          - name: created_date
+            description: Timestamp the opportunity record was created in Salesforce.
+          - name: updated_date
+            description: >
+              Timestamp the opportunity record was last modified in Salesforce.
+              Used as the incremental watermark for fct_opportunity.
