@@ -88,7 +88,8 @@ models:
           has no opportunities.
         tests:
           - accepted_values:
-              values: ['WON', 'LOST', 'OPEN']
+              arguments:
+                values: ['WON', 'LOST', 'OPEN']
       - name: opportunity_amount_category
         description: >
           Size bucket for the opportunity amount, via the opportunity_amount_category
@@ -96,7 +97,8 @@ models:
           Null when the account has no opportunities.
         tests:
           - accepted_values:
-              values: ['SMALL', 'MEDIUM', 'LARGE']
+              arguments:
+                values: ['SMALL', 'MEDIUM', 'LARGE']
 
   - name: int_customers__active_with_opportunities
     description: >
@@ -172,14 +174,16 @@ models:
         description: Simplified status derived from stage (WON/LOST/OPEN). Null when the account has no opportunities.
         tests:
           - accepted_values:
-              values: ['WON', 'LOST', 'OPEN']
+              arguments:
+                values: ['WON', 'LOST', 'OPEN']
       - name: opportunity_amount_category
         description: >
           Size bucket for the opportunity amount (SMALL/MEDIUM/LARGE, see
           opportunity_amount_category macro). Null when the account has no opportunities.
         tests:
           - accepted_values:
-              values: ['SMALL', 'MEDIUM', 'LARGE']
+              arguments:
+                values: ['SMALL', 'MEDIUM', 'LARGE']
       - name: total_account_opportunity_amount
         description: >
           Sum of opportunity amounts across all opportunities on this account,

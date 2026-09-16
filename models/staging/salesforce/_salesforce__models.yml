@@ -47,7 +47,8 @@ models:
           Source is Salesforce customer_status.
         tests:
           - accepted_values:
-              values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
+              arguments:
+                values: ['ACTIVE', 'INACTIVE', 'PROSPECT']
       - name: created_date
         description: Timestamp the customer record was created in Salesforce. Passed through unchanged.
       - name: updated_date
@@ -80,8 +81,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_customers')
-              field: customer_id
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
       - name: account_name
         description: >
           Name of the account/company, trimmed and uppercased.
@@ -132,8 +134,9 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('stg_accounts')
-              field: account_id
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
       - name: opportunity_name
         description: >
           Name of the opportunity/deal, trimmed and uppercased.
@@ -154,7 +157,8 @@ models:
           stages; CLOSED WON and CLOSED LOST are terminal outcomes.
         tests:
           - accepted_values:
-              values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
+              arguments:
+                values: ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED WON', 'CLOSED LOST']
       - name: close_date
         description: Date the opportunity closed, or is expected to close if still open. Passed through unchanged from Salesforce.
       - name: created_date
